@@ -4,12 +4,15 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../src/string_m.c \
 ../src/unix_ftdi_start_v1.c 
 
 OBJS += \
+./src/string_m.o \
 ./src/unix_ftdi_start_v1.o 
 
 C_DEPS += \
+./src/string_m.d \
 ./src/unix_ftdi_start_v1.d 
 
 
