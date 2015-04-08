@@ -28,9 +28,11 @@ int data;
 int fd_FTDI;
 struct termios tio,backup;
 clock_t clkMainTaskStart;
-char pcTransmitBuff[MAX_STRING_LENGTH],a;
+char pcTransmitBuff[MAX_STRING_LENGTH];
 char pcRecieveBuff[MAX_STRING_LENGTH];
 char pcInputBuff[MAX_STRING_LENGTH];
+char cCommandCounter;
+char cCharCounter;
 FILE *pDataFile;
 
 
@@ -56,17 +58,41 @@ int main(int argc, char** arg){
 	else{
 		printf("\nUdało się otworzyć plik dla zapisu danych\n");
 	}
-	a = 'a';
-	while ( a != 'q'){
+	cCommandCounter = 0;
+
+	while ( cCommandCounter != 6){		// kończy pracę po wysłaniu cCommandCounter stringów.
+		long int read_result = 0;
 		clkMainTaskStart = clock();
+
+		// Narazie czyścimy RxBuff w pętli
+		for(cCharCounter = 0; cCharCounter < MAX_STRING_LENGTH; cCharCounter++){
+			pcRecieveBuff[cCharCounter] = 0x00;
+		}
+
 
 		fgets(pcInputBuff,MAX_STRING_LENGTH, stdin);
 		ReplaceCharactersInString(pcInputBuff,'\n',0x00);
 		CopyString(pcInputBuff,pcTransmitBuff);
-		write(pcTransmitBuff,fd_FTDI,15);
-		read(pcRecieveBuff,fd_FTDI,15);
-		break;
-		MainTaskWait_ms(1000);
+
+		// Wysyłamy każdy znak osobno.
+		for(cCharCounter = 0; pcTransmitBuff[cCharCounter] != 0x00; cCharCounter++ ){
+			write(fd_FTDI,pcTransmitBuff,1);
+		}
+
+		MainTaskWait_ms(300);
+
+		// Trzeba zrobić poprawny odczyt.
+		read_result = read(fd_FTDI, pcRecieveBuff,MAX_STRING_LENGTH);
+
+
+		// Wypisuje różne zmienna do terminala i pliku.
+		printf("\nTxBuff: %s",pcTransmitBuff);
+		printf("\nRxBuff: %s",pcRecieveBuff);
+		printf("\nread_resx: %x",read_result);
+		fputs("\n|start|",pDataFile);
+		fputs(pcTransmitBuff,pDataFile);
+		fputs("|stop|",pDataFile);
+		cCommandCounter++;
 	}
 	close(pDataFile);
 	if(tcsetattr(fd_FTDI, TCSANOW, &backup) == -1) {
