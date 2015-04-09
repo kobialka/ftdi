@@ -21,21 +21,23 @@
 // ==========================================
 // STAŁE
 #define BAUDRATE B9600
-#define MAX_STRING_LENGTH 50
-#define TIMEOUT	5
+#define MAX_STRING_LENGTH 15000
+#define TIMEOUT	25
+#define MAX_COMMAND_NR 10
+
 
 // ==========================================
 // ZMIENNE GLOBALNE
 int data;
 int fd_FTDI;
-int iReadResult;
 struct termios tio,backup;
 clock_t clkMainTaskStart;		// us
 time_t timeTimeoutStart;		// s
-char pcTransmitBuff[MAX_STRING_LENGTH];
+char pcTransmitBuff[150];
 char pcRecieveBuff[MAX_STRING_LENGTH];
-char pcInputBuff[MAX_STRING_LENGTH];
-char cCommandCounter, cCharCounter, cTempVar;
+char pcInputBuff[150];
+char cCommandCounter, cTempVar;
+long int liCharCounter;
 char cRecievedValue;
 FILE *pDataFile;
 
@@ -44,7 +46,7 @@ FILE *pDataFile;
 // DEKLARACJE FUNKCJI
 int MainTaskWait_ms(clock_t MainTaskPeriod);
 int fd_FTDI_Init(void);
-int TimeOut(clock_t clkMainTaskPeriod_ms);
+
 
 // ==========================================
 // PĘTLA GŁÓWNA
@@ -62,48 +64,44 @@ int main(int argc, char** arg){
 		printf("\nUdało się otworzyć plik dla zapisu danych\n");
 	}
 	cCommandCounter = 0;
-	while (cCommandCounter != 30){		// kończy pracę po wysłaniu cCommandCounter stringów.
-		long int read_result = 0;
+	while (1){		// kończy pracę po wysłaniu cCommandCounter stringów.
 		clkMainTaskStart = clock();
 
-		// Narazie czyścimy RxBuff w pętli
-		for(cCharCounter = 0; cCharCounter < MAX_STRING_LENGTH; cCharCounter++){
-			pcRecieveBuff[cCharCounter] = 0x00;
-		}
-
-
 		fgets(pcInputBuff,MAX_STRING_LENGTH, stdin);
-//		ReplaceCharactersInString(pcInputBuff,'\n',0x00);
 		CopyString(pcInputBuff,pcTransmitBuff);
-
+		if( EQUAL == eCompareString("exit\n",pcTransmitBuff) ) {
+			goto EXIT;
+		}
 		// Wysyłamy każdy znak osobno.
-		for(cCharCounter = 0; pcTransmitBuff[cCharCounter] != NULL; cCharCounter++ ){};
-		write(fd_FTDI,pcTransmitBuff,cCharCounter);
-
-//		MainTaskWait_ms(20);
+		for(liCharCounter = 0; pcTransmitBuff[liCharCounter] != NULL; liCharCounter++ ){};
+		write(fd_FTDI,pcTransmitBuff,liCharCounter);
 
 		cRecievedValue = 0;
-		cCharCounter = 0;
+		liCharCounter = 0;
 		timeTimeoutStart = time(NULL);
 		do{
 			if( 0 < read(fd_FTDI, &cRecievedValue,1) ){
-				pcRecieveBuff[cCharCounter] = cRecievedValue;
-				cCharCounter++;
+				pcRecieveBuff[liCharCounter] = cRecievedValue;
+				liCharCounter++;
 			}
 
 		}while( (cRecievedValue != 0x0a) && (time(NULL) < timeTimeoutStart + TIMEOUT) );
-
+		pcRecieveBuff[liCharCounter] = NULL;
 
 		// Wypisuje różne zmienna do terminala i pliku.
 		printf("\nTxBuff: %s",pcTransmitBuff);
 		printf("\nRxBuff: %s",pcRecieveBuff);
+
 		fputs("\nTx:",pDataFile);
 		fputs(pcTransmitBuff,pDataFile);
 		fputs("\nRx:",pDataFile);
 		fputs(pcRecieveBuff,pDataFile);
 		cCommandCounter++;
 	}
+
+	EXIT:
 	close(pDataFile);
+
 	if(tcsetattr(fd_FTDI, TCSANOW, &backup) == -1) {
 		printf("serial_open(): unable to restore old attributes\n");
 		return (-1);
@@ -112,10 +110,6 @@ int main(int argc, char** arg){
 }
 
 
-// ==========================================
-int TimeOut(clock_t clkMainTaskPeriod_ms){
-
-}
 // ==========================================
 //
 int MainTaskWait_ms(clock_t clkMainTaskPeriod_ms){
