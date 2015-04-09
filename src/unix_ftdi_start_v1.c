@@ -18,17 +18,20 @@
 #include "../inc/string_m.h"
 
 
+// ==========================================
 // STAŁE
 #define BAUDRATE B9600
 #define MAX_STRING_LENGTH 50
+#define TIMEOUT	5
 
-
+// ==========================================
 // ZMIENNE GLOBALNE
 int data;
 int fd_FTDI;
 int iReadResult;
 struct termios tio,backup;
-clock_t clkMainTaskStart;
+clock_t clkMainTaskStart;		// us
+time_t timeTimeoutStart;		// s
 char pcTransmitBuff[MAX_STRING_LENGTH];
 char pcRecieveBuff[MAX_STRING_LENGTH];
 char pcInputBuff[MAX_STRING_LENGTH];
@@ -37,14 +40,13 @@ char cRecievedValue;
 FILE *pDataFile;
 
 
+// ==========================================
 // DEKLARACJE FUNKCJI
 int MainTaskWait_ms(clock_t MainTaskPeriod);
 int fd_FTDI_Init(void);
+int TimeOut(clock_t clkMainTaskPeriod_ms);
 
-
-
-
-
+// ==========================================
 // PĘTLA GŁÓWNA
 int main(int argc, char** arg){
 	if (fd_FTDI_Init() < 0){
@@ -52,7 +54,7 @@ int main(int argc, char** arg){
 	}
 
 	pDataFile = fopen("transmisja.txt","w");
-	if(pDataFile == NULL){;
+	if(pDataFile == NULL){
 		printf("\nNie udało się otworzyć pliku dla zapisu danych\n");
 		return (-1);
 	}
@@ -80,14 +82,16 @@ int main(int argc, char** arg){
 
 //		MainTaskWait_ms(20);
 
-
+		cRecievedValue = 0;
 		cCharCounter = 0;
+		timeTimeoutStart = time(NULL);
 		do{
 			if( 0 < read(fd_FTDI, &cRecievedValue,1) ){
 				pcRecieveBuff[cCharCounter] = cRecievedValue;
 				cCharCounter++;
 			}
-		}while(cRecievedValue != 0x0a);
+
+		}while( (cRecievedValue != 0x0a) && (time(NULL) < timeTimeoutStart + TIMEOUT) );
 
 
 		// Wypisuje różne zmienna do terminala i pliku.
@@ -108,6 +112,12 @@ int main(int argc, char** arg){
 }
 
 
+// ==========================================
+int TimeOut(clock_t clkMainTaskPeriod_ms){
+
+}
+// ==========================================
+//
 int MainTaskWait_ms(clock_t clkMainTaskPeriod_ms){
 	clock_t clkMainTaskEnd;
 
@@ -121,7 +131,7 @@ int MainTaskWait_ms(clock_t clkMainTaskPeriod_ms){
 	}
 }
 
-
+// ==========================================
 // INICJALIZACJA urządzenia /dev/ttyUSB
 int fd_FTDI_Init(void){
 	//First we open the usbdevice (trying to find the chip
