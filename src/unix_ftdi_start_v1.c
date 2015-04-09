@@ -26,13 +26,14 @@
 // ZMIENNE GLOBALNE
 int data;
 int fd_FTDI;
+int iReadResult;
 struct termios tio,backup;
 clock_t clkMainTaskStart;
 char pcTransmitBuff[MAX_STRING_LENGTH];
 char pcRecieveBuff[MAX_STRING_LENGTH];
 char pcInputBuff[MAX_STRING_LENGTH];
-char cCommandCounter;
-char cCharCounter;
+char cCommandCounter, cCharCounter, cTempVar;
+char cRecievedValue;
 FILE *pDataFile;
 
 
@@ -59,8 +60,7 @@ int main(int argc, char** arg){
 		printf("\nUdało się otworzyć plik dla zapisu danych\n");
 	}
 	cCommandCounter = 0;
-
-	while ( cCommandCounter != 6){		// kończy pracę po wysłaniu cCommandCounter stringów.
+	while (cCommandCounter != 30){		// kończy pracę po wysłaniu cCommandCounter stringów.
 		long int read_result = 0;
 		clkMainTaskStart = clock();
 
@@ -71,27 +71,32 @@ int main(int argc, char** arg){
 
 
 		fgets(pcInputBuff,MAX_STRING_LENGTH, stdin);
-		ReplaceCharactersInString(pcInputBuff,'\n',0x00);
+//		ReplaceCharactersInString(pcInputBuff,'\n',0x00);
 		CopyString(pcInputBuff,pcTransmitBuff);
 
 		// Wysyłamy każdy znak osobno.
-		for(cCharCounter = 0; pcTransmitBuff[cCharCounter] != 0x00; cCharCounter++ ){
-			write(fd_FTDI,pcTransmitBuff,1);
-		}
+		for(cCharCounter = 0; pcTransmitBuff[cCharCounter] != NULL; cCharCounter++ ){};
+		write(fd_FTDI,pcTransmitBuff,cCharCounter);
 
-		MainTaskWait_ms(300);
+//		MainTaskWait_ms(20);
 
-		// Trzeba zrobić poprawny odczyt.
-		read_result = read(fd_FTDI, pcRecieveBuff,MAX_STRING_LENGTH);
+
+		cCharCounter = 0;
+		do{
+			if( 0 < read(fd_FTDI, &cRecievedValue,1) ){
+				pcRecieveBuff[cCharCounter] = cRecievedValue;
+				cCharCounter++;
+			}
+		}while(cRecievedValue != 0x0a);
 
 
 		// Wypisuje różne zmienna do terminala i pliku.
 		printf("\nTxBuff: %s",pcTransmitBuff);
 		printf("\nRxBuff: %s",pcRecieveBuff);
-		printf("\nread_resx: %x",read_result);
-		fputs("\n|start|",pDataFile);
+		fputs("\nTx:",pDataFile);
 		fputs(pcTransmitBuff,pDataFile);
-		fputs("|stop|",pDataFile);
+		fputs("\nRx:",pDataFile);
+		fputs(pcRecieveBuff,pDataFile);
 		cCommandCounter++;
 	}
 	close(pDataFile);
