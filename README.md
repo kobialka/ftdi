@@ -1,0 +1,1 @@
+program obsługuje konwerter USB<->UART firmy FTDI.
