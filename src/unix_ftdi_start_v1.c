@@ -22,7 +22,7 @@
 // STAŁE
 #define BAUDRATE B9600
 #define MAX_STRING_LENGTH 15000
-#define TIMEOUT	25
+#define TIMEOUT	3
 #define MAX_COMMAND_NR 10
 
 
@@ -92,10 +92,11 @@ int main(int argc, char** arg){
 		printf("\nTxBuff: %s",pcTransmitBuff);
 		printf("\nRxBuff: %s",pcRecieveBuff);
 
-		fputs("\nTx:",pDataFile);
+		fputs("Tx: ",pDataFile);
 		fputs(pcTransmitBuff,pDataFile);
-		fputs("\nRx:",pDataFile);
+		fputs("Rx: ",pDataFile);
 		fputs(pcRecieveBuff,pDataFile);
+		fputs("\n\n",pDataFile);
 		cCommandCounter++;
 	}
 
