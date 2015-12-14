@@ -3,7 +3,7 @@
  Name        : unix_fd_FTDI_start_v1.c
  Author      : Michał Kobiałka
  Version     :
- Copyright   : Your copyright notice
+ Copyright   : All rights reserved
  Description : Komunikacja mikroprocesora z komputerem za pośrednictwem konwertera USB<->RS232 FT232 firmy fd_FTDI.
  ============================================================================
  */
@@ -22,7 +22,7 @@
 // STAŁE
 #define BAUDRATE B9600
 #define MAX_STRING_LENGTH 15000
-#define TIMEOUT	25
+#define TIMEOUT	3
 #define MAX_COMMAND_NR 10
 
 
@@ -64,7 +64,7 @@ int main(int argc, char** arg){
 		printf("\nUdało się otworzyć plik dla zapisu danych\n");
 	}
 	cCommandCounter = 0;
-	while (1){		// kończy pracę po wysłaniu cCommandCounter stringów.
+	while (1){   // KONIEC PRACY PO wpisaniu exit
 		clkMainTaskStart = clock();
 
 		fgets(pcInputBuff,MAX_STRING_LENGTH, stdin);
@@ -73,7 +73,7 @@ int main(int argc, char** arg){
 			goto EXIT;
 		}
 		// Wysyłamy każdy znak osobno.
-		for(liCharCounter = 0; pcTransmitBuff[liCharCounter] != NULL; liCharCounter++ ){};
+		for(liCharCounter = 0; pcTransmitBuff[liCharCounter] != 0; liCharCounter++ ){};
 		write(fd_FTDI,pcTransmitBuff,liCharCounter);
 
 		cRecievedValue = 0;
@@ -86,16 +86,17 @@ int main(int argc, char** arg){
 			}
 
 		}while( (cRecievedValue != 0x0a) && (time(NULL) < timeTimeoutStart + TIMEOUT) );
-		pcRecieveBuff[liCharCounter] = NULL;
+		pcRecieveBuff[liCharCounter] = 0;
 
 		// Wypisuje różne zmienna do terminala i pliku.
 		printf("\nTxBuff: %s",pcTransmitBuff);
 		printf("\nRxBuff: %s",pcRecieveBuff);
 
-		fputs("\nTx:",pDataFile);
+		fputs("Tx: ",pDataFile);
 		fputs(pcTransmitBuff,pDataFile);
-		fputs("\nRx:",pDataFile);
+		fputs("Rx: ",pDataFile);
 		fputs(pcRecieveBuff,pDataFile);
+		fputs("\n\n",pDataFile);
 		cCommandCounter++;
 	}
 
@@ -133,13 +134,16 @@ int fd_FTDI_Init(void){
 	if ( ( fd_FTDI = open( "/dev/ttyUSB0", O_RDWR| O_NOCTTY| O_NDELAY )) < 0 ) {
 		fprintf(stderr,"Can't open dev/ttyUSB0\n");
 		if ( ( fd_FTDI = open( "/dev/ttyUSB1", O_RDWR| O_NOCTTY| O_NDELAY )) < 0 ) {
-			fprintf(stderr,"Can't open dev/ttyUSB1 either\n");
-			return(-1);
+			fprintf(stderr,"Can't open dev/ttyUSB1 \n");
+			if ( ( fd_FTDI = open( "/dev/FT232", O_RDWR| O_NOCTTY| O_NDELAY )) < 0 ) {
+					fprintf(stderr,"Can't open dev/FT232 either\n");
+					return(-1);
+			}
 		}
 	}
 	if ( tcgetattr( fd_FTDI, &tio ) == -1 )				// zapisujemy ustawienia otwartego portu do struktury tio.
 	{
-		fprintf(stderr,"Can't properly open dev/ttyUSB0\n");
+		fprintf(stderr,"Can't properly open\n");
 	};
 	backup=tio;							// zapisujemy kopię ustawień portu.
 	// Setting baudrate
